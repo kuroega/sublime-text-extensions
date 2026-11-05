@@ -87,7 +87,7 @@ class MiniHtml(HTMLParser):
         self.cell = None
         self.document_output = None
         # Minihtml's fallback CJK glyphs are wider than Sublime's measured Latin em.
-        self.wrap_width = max(24, int(table_width * 0.85) - 4)
+        self.wrap_width = max(32, int(table_width * 0.55))
         self.text_line_width = 0
         self.pending_space = False
 
