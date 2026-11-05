@@ -73,7 +73,7 @@ def local_path(filename, url):
 
 
 class MiniHtml(HTMLParser):
-    def __init__(self, filename, table_width):
+    def __init__(self, filename, table_width, pixel_width):
         super().__init__()
         self.filename = filename
         self.table_width = table_width
@@ -87,16 +87,18 @@ class MiniHtml(HTMLParser):
         self.cell = None
         self.document_output = None
         # Minihtml's fallback CJK glyphs are wider than Sublime's measured Latin em.
-        self.wrap_width = max(32, int(table_width * 0.55))
+        self.wrap_width = max(20, int(table_width * 0.65))
+        self.pixel_width = pixel_width
         self.text_line_width = 0
         self.pending_space = False
+        self.text_scale = 1.0
 
     def append_wrapped_text(self, text):
         for token in TEXT_WORDS.findall(text):
             if token.isspace():
                 self.pending_space = self.text_line_width > 0
                 continue
-            width = text_width(token)
+            width = text_width(token) * self.text_scale
             if self.pending_space:
                 if self.text_line_width + 1 + width > self.wrap_width:
                     self.output.append("<br>")
@@ -113,7 +115,7 @@ class MiniHtml(HTMLParser):
                 self.text_line_width += width
                 continue
             for character in token:
-                character_width = text_width(character)
+                character_width = text_width(character) * self.text_scale
                 if self.text_line_width and self.text_line_width + character_width > self.wrap_width:
                     self.output.append("<br>")
                     self.text_line_width = 0
@@ -137,6 +139,10 @@ class MiniHtml(HTMLParser):
         if tag in ("p", "h1", "h2", "h3", "h4", "h5", "h6", "li"):
             self.text_line_width = 0
             self.pending_space = False
+            self.text_scale = {
+                "h1": 2.4, "h2": 2.0, "h3": 1.6, "h4": 1.35,
+                "h5": 1.15, "h6": 1.0
+            }.get(tag, 1.0)
         if tag == "li":
             marker = self.lists[-1]
             self.pending_marker = "• " if marker is None else "{}. ".format(marker)
@@ -219,6 +225,8 @@ class MiniHtml(HTMLParser):
         if tag == "pre":
             self.preformatted = False
         self.output.append(self.closers.pop()[1])
+        if tag in ("p", "h1", "h2", "h3", "h4", "h5", "h6", "li"):
+            self.text_scale = 1.0
         if tag in ("td", "th"):
             self.table.add_cell(self.cell)
             self.output = self.document_output
@@ -259,7 +267,7 @@ class MiniHtml(HTMLParser):
         self.handle_data(character if not 0xd800 <= ord(character) <= 0xdfff else "\ufffd")
 
 
-def render(text, filename, table_width=80):
+def render(text, filename, table_width=80, pixel_width=None):
     markdown = Markdown(
         extensions=[FencedCodeExtension(), TableExtension()],
         lazy_ol=False,
@@ -267,9 +275,10 @@ def render(text, filename, table_width=80):
     # Disable raw HTML while leaving entities and fenced code enabled.
     del markdown.preprocessors["html_block"]
     del markdown.inlinePatterns["html"]
-    renderer = MiniHtml(filename, table_width)
+    renderer = MiniHtml(filename, table_width, pixel_width or table_width * 12)
     renderer.feed(markdown.convert(text))
     renderer.close()
     body = "".join(renderer.output) or "<p>Start typing to preview your Markdown.</p>"
-    content = '<body id="markdown-preview-in-place">{}<div class="document">{}</div></body>'
-    return content.format(STYLE, body), renderer.links
+    content = ('<body id="markdown-preview-in-place">{}'
+               '<div class="document" style="width:{}px">{}</div></body>')
+    return content.format(STYLE, renderer.pixel_width, body), renderer.links

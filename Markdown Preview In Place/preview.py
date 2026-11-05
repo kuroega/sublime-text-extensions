@@ -92,8 +92,9 @@ class Preview:
         pane_width = self.view.viewport_extent()[0]
         em_width = max(1, self.view.em_width())
         # Budget for CJK fallback glyphs, which can consume almost two Latin ems.
-        table_width = max(64, int(pane_width / em_width))
-        return self.source.id(), self.source.change_count(), self.source.file_name(), table_width
+        table_width = max(24, int(pane_width / em_width))
+        return (self.source.id(), self.source.change_count(), self.source.file_name(),
+                table_width, max(120, int(pane_width) - 72))
 
     def capture(self):
         self.timer_pending = False
@@ -118,7 +119,7 @@ class Preview:
         try:
             from .rendering import render
 
-            content, links = render(text, version[2], version[3])
+            content, links = render(text, version[2], version[3], version[4])
         except Exception:
             traceback.print_exc()
             content, links = "<p>Unable to render this Markdown. See the Sublime console.</p>", {}
