@@ -140,8 +140,8 @@ class MiniHtml(HTMLParser):
             self.text_line_width = 0
             self.pending_space = False
             self.text_scale = {
-                "h1": 2.4, "h2": 2.0, "h3": 1.6, "h4": 1.35,
-                "h5": 1.15, "h6": 1.0
+                "h1": 1.8, "h2": 1.6, "h3": 1.4, "h4": 1.2,
+                "h5": 1.1, "h6": 1.0
             }.get(tag, 1.0)
         if tag == "li":
             marker = self.lists[-1]
