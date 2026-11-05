@@ -1,0 +1,6 @@
+[
+    { "caption": "Markdown: Open Preview to the Side", "command": "open_markdown_preview_in_place" },
+    { "caption": "Markdown: Open Preview in New Tab", "command": "open_markdown_preview_in_place",
+      "args": { "to_side": false } },
+    { "caption": "Markdown: Close Preview", "command": "close_markdown_preview_in_place" }
+]

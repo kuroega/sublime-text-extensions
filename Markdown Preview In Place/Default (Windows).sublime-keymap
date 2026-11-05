@@ -1,0 +1,9 @@
+[
+    {
+        "keys": ["ctrl+k", "ctrl+m"],
+        "command": "open_markdown_preview_in_place",
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "text.html.markdown" }
+        ]
+    }
+]
