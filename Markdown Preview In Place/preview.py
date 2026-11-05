@@ -91,7 +91,8 @@ class Preview:
     def source_version(self):
         pane_width = self.view.viewport_extent()[0]
         em_width = max(1, self.view.em_width())
-        table_width = max(20, int(pane_width / em_width) - 5)
+        # Leave room for the larger fallback glyphs used by mixed Chinese and Latin text.
+        table_width = max(20, int(pane_width / em_width * 0.85) - 5)
         return self.source.id(), self.source.change_count(), self.source.file_name(), table_width
 
     def capture(self):
