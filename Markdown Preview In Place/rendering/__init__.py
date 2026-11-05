@@ -10,7 +10,7 @@ from urllib.parse import quote, unquote, urlsplit
 from .._vendor.markdown import Markdown
 from .._vendor.markdown.extensions.fenced_code import FencedCodeExtension
 from .._vendor.markdown.extensions.tables import TableExtension
-from .table import Cell, Table
+from .table import Cell, Table, text_width
 
 
 STYLE = """
@@ -52,6 +52,7 @@ FORMATTING_TAGS = {
     "code", "em", "h1", "h2", "h3", "h4", "h5", "h6", "p", "strong"
 }
 TASK_PREFIX = re.compile(r"^\[([ xX])\] +")
+TEXT_WORDS = re.compile(r"\s+|\S+")
 
 
 def local_path(filename, url):
@@ -85,6 +86,38 @@ class MiniHtml(HTMLParser):
         self.table = None
         self.cell = None
         self.document_output = None
+        self.wrap_width = max(24, table_width - 4)
+        self.text_line_width = 0
+        self.pending_space = False
+
+    def append_wrapped_text(self, text):
+        for token in TEXT_WORDS.findall(text):
+            if token.isspace():
+                self.pending_space = self.text_line_width > 0
+                continue
+            width = text_width(token)
+            if self.pending_space:
+                if self.text_line_width + 1 + width > self.wrap_width:
+                    self.output.append("<br>")
+                    self.text_line_width = 0
+                else:
+                    self.output.append(" ")
+                    self.text_line_width += 1
+                self.pending_space = False
+            if width <= self.wrap_width:
+                if self.text_line_width + width > self.wrap_width:
+                    self.output.append("<br>")
+                    self.text_line_width = 0
+                self.output.append(escape(token, quote=False))
+                self.text_line_width += width
+                continue
+            for character in token:
+                character_width = text_width(character)
+                if self.text_line_width and self.text_line_width + character_width > self.wrap_width:
+                    self.output.append("<br>")
+                    self.text_line_width = 0
+                self.output.append(escape(character, quote=False))
+                self.text_line_width += character_width
 
     def emit_marker(self, text):
         if self.pending_marker is None:
@@ -100,6 +133,9 @@ class MiniHtml(HTMLParser):
 
     def handle_starttag(self, tag, pairs):
         attrs = dict(pairs)
+        if tag in ("p", "h1", "h2", "h3", "h4", "h5", "h6", "li"):
+            self.text_line_width = 0
+            self.pending_space = False
         if tag == "li":
             marker = self.lists[-1]
             self.pending_marker = "• " if marker is None else "{}. ".format(marker)
@@ -202,10 +238,12 @@ class MiniHtml(HTMLParser):
         if self.cell:
             self.cell.add_text(text.replace("\n", " "))
             return
-        text = escape(text, quote=False)
         if self.preformatted:
+            text = escape(text, quote=False)
             text = text.replace(" ", "&nbsp;").replace("\n", "<br>")
-        self.output.append(text)
+            self.output.append(text)
+        else:
+            self.append_wrapped_text(text)
 
     def handle_entityref(self, name):
         codepoint = name2codepoint.get(name)
